@@ -22,7 +22,9 @@ function handleResponse(growthData) {
       .sort((a, b) => a.avgWeekGrowth - b.avgWeekGrowth);
     weeksGrowthByUsageCategory[usageCategory] = usageCategoryData[usageCategoryData.length - 1].avgWeekGrowth;
 
-    const studentCount = usageCategoryData.length > 0 ? usageCategoryData[0].studentCount : null;
+    const studentCount = usageCategoryData.length > 0
+      ? usageCategoryData[0].studentCount.toLocaleString() //format number with commas
+      : null;
 
     let  x = usageCategoryData.map((data, index) => index);
     let y = usageCategoryData.map(data => data.avgWeekGrowth);
@@ -84,10 +86,11 @@ function handleResponse(growthData) {
   // Round the average to the nearest one decimal place
   overallAverageWeeksBetweenAssessment = Math.round(overallAverageWeeksBetweenAssessment * 10) / 10;
 
-  var plotLayout = {
+  const plotLayout = {
     title: 'Overall Growth CSM View',
     xaxis: {
       // title: `Average of ${overallAverageWeeksBetweenAssessment} weeks between assessments`,
+      fixedrange: true,
       showgrid: false,
       tickvals: [0, 0.5, 1],
       ticktext: [
@@ -99,6 +102,7 @@ function handleResponse(growthData) {
     },
     yaxis: {
       title: 'Weeks of Growth',
+      fixedrange: true,
     },
     legend: {
       orientation: 'h',
@@ -123,5 +127,9 @@ function handleResponse(growthData) {
     plotLayout.annotations.push(result);
   });
 
-  Plotly.newPlot('chart-container', plotData, plotLayout, {displayModeBar: false});
+  const plotConfig = {
+    displayModeBar: false,
+  }
+
+  Plotly.newPlot('chart-container', plotData, plotLayout, plotConfig);
 }
