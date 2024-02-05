@@ -1,10 +1,11 @@
 {
+  "id": "d2f77d4a-6fcf-404f-be45-3b3d6004f96d",
   "name": "Growth Summary",
+  "fileName": "manifest.json",
   "version": "1.0.0",
-  "fullpage": true,
   "size": {
-    "width": 1,
-    "height": 1
+    "width": 2,
+    "height": 2
   },
   "mapping": [
     {
@@ -24,16 +25,22 @@
           "columnName": "Avg Weeks Between Assessment"
         },
         {
-          "alias": "usageCategoryMinWeeksThreshold",
+          "alias": "usageCategory",
           "columnName": "Usage Category Variable Min Weeks Threshold (Low+Med | High)"
+        },
+        {
+          "alias": "usageCategoryDisplayName",
+          "columnName": "Usage Category Display Name"
         },
         {
           "alias": "studentCount",
           "columnName": "# Students Dataset Field"
+        },
+        {
+          "alias": "isUsageCategoryVisible",
+          "columnName": "Show or No"
         }
       ]
     }
-  ],
-  "fileName": "manifest.json",
-  "id": "d2f77d4a-6fcf-404f-be45-3b3d6004f96d"
+  ]
 }

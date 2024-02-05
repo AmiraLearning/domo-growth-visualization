@@ -1,127 +1,201 @@
 const apiBaseUrl = '/data/v1/growth';
-const groupby = ['usageCategoryMinWeeksThreshold', 'week'];
+const groupby = ['usageCategory', 'week'];
 
 const USAGE_CATEGORIES = ['Expected', 'Actual', 'High', 'Low'];
 const USAGE_CATEGORY_COLORS = {
-  'Expected': '#02733E',
-  'Actual': '#04BF8A',
-  'High': '#2176ff',
-  'Low': '#01baef',
+  'Expected': '#04BF8A',
+  'Actual': '#2176ff',
+  'High': '#04BF8A',
+  'Low': '#2176ff',
 }
 
+let plotData = [];
+const plotLayout = {
+  margin: { t: 10 },
+  xaxis: {
+    // rangemode: 'nonnegative',
+    fixedrange: true,
+    showgrid: false,
+    tickvals: [0, 1],
+    ticktext: [
+      'BOY Assessment',
+      'MOY Assessment',
+    ],
+  },
+  yaxis: {
+    title: 'Weeks of Growth',
+    fixedrange: true,
+  },
+  legend: {
+    orientation: 'h',
+    x: 0.5,
+    xanchor: 'center',
+    y: 1.1,
+    yanchor: 'top',
+  },
+  annotations: [],
+};
 
 domo.get(`${apiBaseUrl}?useBeastMode=true&groupby=${groupby.join()}`).then(handleResponse);
 
 function handleResponse(growthData) {
-  let plotData = [];
-  let weeksGrowthByUsageCategory = {};
+  const isAnyUsageCategoryVisible = growthData.some(data => data.isUsageCategoryVisible === 1);
 
-  USAGE_CATEGORIES.forEach(usageCategory => {
-    const usageCategoryData = growthData
-      .filter(data => data.usageCategoryMinWeeksThreshold === usageCategory)
-      .sort((a, b) => a.avgWeekGrowth - b.avgWeekGrowth);
-    weeksGrowthByUsageCategory[usageCategory] = usageCategoryData[usageCategoryData.length - 1].avgWeekGrowth;
+  // map growth data to usage category
+  const growthByUsageCategoryMap = growthData.reduce((map, data) => {
+    const {usageCategory, week, avgWeekGrowth} = data;
+    if (!map.has(usageCategory)) {
+      const {
+        usageCategoryDisplayName,
+        isUsageCategoryVisible,
+        studentCount,
+        avgWeeksBetweenAssessment,
+      } = data;
 
-    const studentCount = usageCategoryData.length > 0 ? usageCategoryData[0].studentCount : null;
+      map.set(usageCategory, {
+        usageCategoryDisplayName,
+        isUsageCategoryVisible,
+        studentCount,
+        avgWeeksBetweenAssessment,
+        usageCategoryColor: USAGE_CATEGORY_COLORS[usageCategory],
+        growthData: []
+      });
+    }
 
-    let  x = usageCategoryData.map((data, index) => index);
-    let y = usageCategoryData.map(data => data.avgWeekGrowth);
+    map.get(usageCategory).growthData.push({
+      week,
+      avgWeekGrowth,
+    });
+
+    return map;
+  }, new Map());
+
+  if(!isAnyUsageCategoryVisible) displayNoDataMessage();
+  else plotVisibleUsageCategories(growthByUsageCategoryMap);
+
+  const plotConfig = {
+    displayModeBar: false,
+    responsive: true,
+  }
 
 
-    let yStart = y[0];
-    let yEnd = y[1];
-    let xStart = 0;
-    let xEnd = 1;
+  Plotly.newPlot('chart-container', plotData, plotLayout, plotConfig);
+}
+
+function plotVisibleUsageCategories(growthByUsageCategoryMap) {
+  growthByUsageCategoryMap.forEach((usageCategoryData) => {
+    // only plot visible usage categories
+    if(!usageCategoryData.isUsageCategoryVisible) return;
+
+    const { usageCategoryDisplayName, usageCategoryColor, studentCount } = usageCategoryData;
+
+    // add markers
+    usageCategoryData.growthData.forEach((data, index) => {
+      plotData.push({
+        x: [index],
+        y: [data.avgWeekGrowth],
+        mode: 'markers',
+        marker: {
+          color: usageCategoryColor,
+          size: 9,
+        },
+        hoverinfo: 'skip',
+        showlegend: false,
+      });
+    });
+
+    let xCoordinates = usageCategoryData.growthData.map((data, index) => index);
+    let yCoordinates = usageCategoryData.growthData.map(data => data.avgWeekGrowth);
+
+    // add trace
+    plotData.push({
+      name: usageCategoryDisplayName,
+      x: xCoordinates,
+      y: yCoordinates,
+      mode: 'lines',
+      hoverinfo: 'skip',
+      line: {
+        color: usageCategoryColor,
+        width: 4,
+      },
+    });
+
+    // display average weeks between assessments on x-axis
+    plotLayout.xaxis.title = `${getOverallAverageWeeksBetweenAssessment(growthByUsageCategoryMap)} average weeks between assessments`,
+
+    // add annotation for last data point
+    plotLayout.annotations.push({
+      text: `${Math.round(yCoordinates[yCoordinates.length - 1] * 10) / 10} weeks`,
+      font: { size:13 },
+      xref: 'paper',
+      x: 0.955,
+      y: yCoordinates[yCoordinates.length - 1],
+      xanchor: 'left',
+      yanchor: 'middle',
+      showarrow: false
+    });
+
+    // add trace of hidden markers for student count hover
+    let yStart = yCoordinates[0];
+    let yEnd = yCoordinates[1];
+    let xStart = xCoordinates[0];
+    let xEnd = xCoordinates[1];
     let steps = 100; // Define the number of steps for interpolation
 
     for(let i = 0; i <= steps; i++) {
-      x.push(xStart + (xEnd - xStart) * (i / steps));
-      y.push(yStart + (yEnd - yStart) * (i / steps));
+      xCoordinates.push(xStart + (xEnd - xStart) * (i / steps));
+      yCoordinates.push(yStart + (yEnd - yStart) * (i / steps));
     }
 
-    // add trace
-    let trace = {
-      name: usageCategory,
-      x: x,
-      y: y,
-      mode: 'lines',
-      line: {color: USAGE_CATEGORY_COLORS[usageCategory]},
-      hoverinfo: 'skip',
-    };
-    plotData.push(trace);
-
-
-    let pairwise = arr => arr.map((value, index) => [value, arr[index + 1]]).slice(0, arr.length - 1);
-    let x_pairs = pairwise(x);
-    let y_pairs = pairwise(y);
-
-    // create mid points
-    let x_mid = x_pairs.map(mid => mid.reduce((a, b) => a + b, 0) / 2);
-    let y_mid = y_pairs.map(mid => mid.reduce((a, b) => a + b, 0) / 2);
-
-    // add trace of hidden midpoints for hover information
-    let midpoints = {
-      name: usageCategory,
-      x: x_mid,
-      y: y_mid,
+    plotData.push({
+      name: usageCategoryDisplayName,
+      x: xCoordinates,
+      y: yCoordinates,
       mode: 'markers',
       marker: {color: 'rgba(0,0,0,0.0)'},
-      hovertemplate: studentCount && `${studentCount} students <extra></extra>`,
+      hovertemplate: `${studentCount.toLocaleString()} students <extra></extra>`,
       hoverlabel: {bgcolor: 'deep', font: { size: 16} },
       showlegend: false,
-    };
-    plotData.push(midpoints);
-});
+    });
+  });
+}
 
-  // Sum up all the avgWeeksBetweenAssessment values
-  const totalWeeksBetweenAssessments = growthData
-    .map(data => data.avgWeeksBetweenAssessment)
-    .reduce((a, b) => a + b, 0);
+function displayNoDataMessage() {
+  plotLayout.yaxis.ticks = ''
+  plotLayout.yaxis.showticklabels = false;
 
-  // Calculate the average weeks between assessments
-  let overallAverageWeeksBetweenAssessment = totalWeeksBetweenAssessments / growthData.length;
-
-  // Round the average to the nearest one decimal place
-  overallAverageWeeksBetweenAssessment = Math.round(overallAverageWeeksBetweenAssessment * 10) / 10;
-
-  var plotLayout = {
-    title: 'Overall Growth CSM View',
-    xaxis: {
-      // title: `Average of ${overallAverageWeeksBetweenAssessment} weeks between assessments`,
-      showgrid: false,
-      tickvals: [0, 0.5, 1],
-      ticktext: [
-        'BOY Assessment',
-        `Average of ${overallAverageWeeksBetweenAssessment} weeks between assessments`,
-        'MOY Assessment'
-        //TODO: Add EOY Assessment
-      ],
-    },
-    yaxis: {
-      title: 'Weeks of Growth',
-    },
-    legend: {
-      orientation: 'h',
-      x: 0.5,
-      xanchor: 'center',
-      y: 1.1,
-      yanchor: 'top',
-    },
-    annotations: [],
-  };
-
-  USAGE_CATEGORIES.forEach((usageCategory) => {
-    let result = {
-      xref: 'paper',
-      x: 0.955,
-      y: weeksGrowthByUsageCategory[usageCategory],
-      xanchor: 'left',
-      yanchor: 'middle',
-      text: `${Math.round(weeksGrowthByUsageCategory[usageCategory] * 10) / 10} weeks`,
-      showarrow: false
-    };
-    plotLayout.annotations.push(result);
+  plotData.push({
+    x: [0, 1],
+    y: [0, 20],
+    mode: 'markers',
+    marker: {color: 'rgba(0,0,0,0.0)'},
+    showlegend: false,
   });
 
-  Plotly.newPlot('chart-container', plotData, plotLayout, {displayModeBar: false});
+  plotLayout.annotations.push({
+    text: 'No growth data available',
+    font: { size: 16 },
+    xref: 'paper',
+    yref: 'paper',
+    x: 0.5,
+    y: 0.5,
+    xanchor: 'center',
+    yanchor: 'middle',
+    showarrow: false,
+  });
+}
+
+function getOverallAverageWeeksBetweenAssessment(growthByUsageCategoryMap) {
+  // Flatten the arrays in the map into a single array
+  let allData = [...growthByUsageCategoryMap.values()].flat();
+  // Filter the data where isUsageCategoryVisible equals 1
+  let visibleData = allData.filter(data => data.isUsageCategoryVisible === 1);
+  // Calculate the sum of all avgWeeksBetweenAssessment for the filtered data
+  let sum = visibleData.reduce((total, data) => total + data.avgWeeksBetweenAssessment, 0);
+  // Calculate the average
+  let average = sum / visibleData.length;
+  // round to 1 decimal place
+  average = Math.round(average * 10) / 10;
+
+  return average;
 }
