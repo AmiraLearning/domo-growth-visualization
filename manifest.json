@@ -1,0 +1,39 @@
+{
+  "name": "Growth Summary",
+  "version": "1.0.0",
+  "fullpage": true,
+  "size": {
+    "width": 1,
+    "height": 1
+  },
+  "mapping": [
+    {
+      "dataSetId": "1cef99d9-09a2-447e-b6e9-a57c9c2546e0",
+      "alias": "growth",
+      "fields": [
+        {
+          "alias": "week",
+          "columnName": "Week #"
+        },
+        {
+          "alias": "avgWeekGrowth",
+          "columnName": "Avg Weeks of Growth"
+        },
+        {
+          "alias": "avgWeeksBetweenAssessment",
+          "columnName": "Avg Weeks Between Assessment"
+        },
+        {
+          "alias": "usageCategoryMinWeeksThreshold",
+          "columnName": "Usage Category Variable Min Weeks Threshold (Low+Med | High)"
+        },
+        {
+          "alias": "studentCount",
+          "columnName": "# Students Dataset Field"
+        }
+      ]
+    }
+  ],
+  "fileName": "manifest.json",
+  "id": "d2f77d4a-6fcf-404f-be45-3b3d6004f96d"
+}
