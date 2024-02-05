@@ -47,8 +47,11 @@ function handleResponse(growthData) {
       x: x,
       y: y,
       mode: 'lines',
-      line: {color: USAGE_CATEGORY_COLORS[usageCategory]},
       hoverinfo: 'skip',
+      line: {
+        color: USAGE_CATEGORY_COLORS[usageCategory],
+        width: 4,
+      },
     };
     plotData.push(trace);
 
