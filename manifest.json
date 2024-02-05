@@ -4,8 +4,8 @@
   "fileName": "manifest.json",
   "version": "1.0.0",
   "size": {
-    "width": 1,
-    "height": 1
+    "width": 3,
+    "height": 2
   },
   "mapping": [
     {
@@ -25,8 +25,12 @@
           "columnName": "Avg Weeks Between Assessment"
         },
         {
-          "alias": "usageCategoryMinWeeksThreshold",
+          "alias": "usageCategory",
           "columnName": "Usage Category Variable Min Weeks Threshold (Low+Med | High)"
+        },
+        {
+          "alias": "usageCategoryDisplayName",
+          "columnName": "Usage Category Display Name"
         },
         {
           "alias": "studentCount",

@@ -1,5 +1,5 @@
 const apiBaseUrl = '/data/v1/growth';
-const groupby = ['usageCategoryMinWeeksThreshold', 'week'];
+const groupby = ['usageCategory', 'week'];
 
 const USAGE_CATEGORIES = ['Expected', 'Actual', 'High', 'Low'];
 const USAGE_CATEGORY_COLORS = {
@@ -18,7 +18,7 @@ function handleResponse(growthData) {
 
   USAGE_CATEGORIES.forEach(usageCategory => {
     const usageCategoryData = growthData
-      .filter(data => data.usageCategoryMinWeeksThreshold === usageCategory)
+      .filter(data => data.usageCategory === usageCategory)
       .sort((a, b) => a.avgWeekGrowth - b.avgWeekGrowth);
     weeksGrowthByUsageCategory[usageCategory] = usageCategoryData[usageCategoryData.length - 1].avgWeekGrowth;
 
@@ -28,7 +28,6 @@ function handleResponse(growthData) {
 
     let  x = usageCategoryData.map((data, index) => index);
     let y = usageCategoryData.map(data => data.avgWeekGrowth);
-
 
     let yStart = y[0];
     let yEnd = y[1];
@@ -43,7 +42,7 @@ function handleResponse(growthData) {
 
     // add trace
     let trace = {
-      name: usageCategory,
+      name: usageCategoryData[0].usageCategoryDisplayName,
       x: x,
       y: y,
       mode: 'lines',
@@ -66,7 +65,7 @@ function handleResponse(growthData) {
 
     // add trace of hidden midpoints for hover information
     let midpoints = {
-      name: usageCategory,
+      name: usageCategoryData[0].usageCategoryDisplayName,
       x: x_mid,
       y: y_mid,
       mode: 'markers',
@@ -119,12 +118,13 @@ function handleResponse(growthData) {
 
   USAGE_CATEGORIES.forEach((usageCategory) => {
     let result = {
+      text: `${Math.round(weeksGrowthByUsageCategory[usageCategory] * 10) / 10} weeks`,
+      font: { size:13 },
       xref: 'paper',
       x: 0.955,
       y: weeksGrowthByUsageCategory[usageCategory],
       xanchor: 'left',
       yanchor: 'middle',
-      text: `${Math.round(weeksGrowthByUsageCategory[usageCategory] * 10) / 10} weeks`,
       showarrow: false
     };
     plotLayout.annotations.push(result);
