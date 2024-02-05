@@ -1,7 +1,8 @@
 {
+  "id": "d2f77d4a-6fcf-404f-be45-3b3d6004f96d",
   "name": "Growth Summary",
+  "fileName": "manifest.json",
   "version": "1.0.0",
-  "fullpage": true,
   "size": {
     "width": 1,
     "height": 1
@@ -33,7 +34,5 @@
         }
       ]
     }
-  ],
-  "fileName": "manifest.json",
-  "id": "d2f77d4a-6fcf-404f-be45-3b3d6004f96d"
+  ]
 }
