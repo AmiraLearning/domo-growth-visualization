@@ -1,12 +1,12 @@
 const apiBaseUrl = '/data/v1/growth';
 const groupby = ['usageCategory', 'week'];
 
-const USAGE_CATEGORIES = ['Expected', 'Actual', 'High', 'Low'];
+const USAGE_CATEGORIES = [/*'Expected', 'Actual',*/ 'High', 'Low'];
 const USAGE_CATEGORY_COLORS = {
-  'Expected': '#02733E',
-  'Actual': '#04BF8A',
-  'High': '#2176ff',
-  'Low': '#01baef',
+  // 'Expected': '#02733E',
+  // 'Actual': '#04BF8A',
+  'High': '#04BF8A',
+  'Low': '#2176ff',
 }
 
 
@@ -22,59 +22,65 @@ function handleResponse(growthData) {
       .sort((a, b) => a.avgWeekGrowth - b.avgWeekGrowth);
     weeksGrowthByUsageCategory[usageCategory] = usageCategoryData[usageCategoryData.length - 1].avgWeekGrowth;
 
-    const studentCount = usageCategoryData.length > 0
-      ? usageCategoryData[0].studentCount.toLocaleString() //format number with commas
-      : null;
+    const {
+      usageCategoryDisplayName,
+      studentCount
+    } = usageCategoryData[0];
 
-    let  x = usageCategoryData.map((data, index) => index);
-    let y = usageCategoryData.map(data => data.avgWeekGrowth);
+    // add markers
+    usageCategoryData.forEach((data, index) => {
+      plotData.push({
+        x: [index],
+        y: [data.avgWeekGrowth],
+        mode: 'markers',
+        marker: {
+          color: USAGE_CATEGORY_COLORS[usageCategory],
+          size: 9,
+        },
+        hoverinfo: 'skip',
+        showlegend: false,
+      });
+    });
 
-    let yStart = y[0];
-    let yEnd = y[1];
-    let xStart = 0;
-    let xEnd = 1;
-    let steps = 100; // Define the number of steps for interpolation
+    let xCoordinates = usageCategoryData.map((data, index) => index);
+    let yCoordinates = usageCategoryData.map(data => data.avgWeekGrowth);
 
-    for(let i = 0; i <= steps; i++) {
-      x.push(xStart + (xEnd - xStart) * (i / steps));
-      y.push(yStart + (yEnd - yStart) * (i / steps));
-    }
-
-    // add trace
-    let trace = {
-      name: usageCategoryData[0].usageCategoryDisplayName,
-      x: x,
-      y: y,
+     // add trace
+    plotData.push({
+      name: usageCategoryDisplayName,
+      x: xCoordinates,
+      y: yCoordinates,
       mode: 'lines',
       hoverinfo: 'skip',
       line: {
         color: USAGE_CATEGORY_COLORS[usageCategory],
         width: 4,
       },
-    };
-    plotData.push(trace);
+    });
 
 
-    let pairwise = arr => arr.map((value, index) => [value, arr[index + 1]]).slice(0, arr.length - 1);
-    let x_pairs = pairwise(x);
-    let y_pairs = pairwise(y);
+    // add trace of hidden markers for student count hover
+    let yStart = yCoordinates[0];
+    let yEnd = yCoordinates[1];
+    let xStart = xCoordinates[0];
+    let xEnd = xCoordinates[1];
+    let steps = 100; // Define the number of steps for interpolation
 
-    // create mid points
-    let x_mid = x_pairs.map(mid => mid.reduce((a, b) => a + b, 0) / 2);
-    let y_mid = y_pairs.map(mid => mid.reduce((a, b) => a + b, 0) / 2);
+    for(let i = 0; i <= steps; i++) {
+      xCoordinates.push(xStart + (xEnd - xStart) * (i / steps));
+      yCoordinates.push(yStart + (yEnd - yStart) * (i / steps));
+    }
 
-    // add trace of hidden midpoints for hover information
-    let midpoints = {
-      name: usageCategoryData[0].usageCategoryDisplayName,
-      x: x_mid,
-      y: y_mid,
+    plotData.push({
+      name: usageCategoryDisplayName,
+      x: xCoordinates,
+      y: yCoordinates,
       mode: 'markers',
       marker: {color: 'rgba(0,0,0,0.0)'},
-      hovertemplate: studentCount && `${studentCount} students <extra></extra>`,
+      hovertemplate: `${studentCount.toLocaleString()} students <extra></extra>`,
       hoverlabel: {bgcolor: 'deep', font: { size: 16} },
       showlegend: false,
-    };
-    plotData.push(midpoints);
+    });
 });
 
   // Sum up all the avgWeeksBetweenAssessment values
