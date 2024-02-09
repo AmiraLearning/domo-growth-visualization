@@ -47,16 +47,15 @@ function handleResponse(growthData) {
 
   let plotData = [];
   const plotLayout = {
+    margin: { t: 10 },
     xaxis: {
-      // title: `Average of ${overallAverageWeeksBetweenAssessment} weeks between assessments`,
+      title: `${getOverallAverageWeeksBetweenAssessment(growthByUsageCategoryMap)} average weeks between assessments`,
       fixedrange: true,
       showgrid: false,
-      tickvals: [0, 0.5, 1],
+      tickvals: [0, 1],
       ticktext: [
         'BOY Assessment',
-        `Average of ${getOverallAverageWeeksBetweenAssessment(growthByUsageCategoryMap)} weeks between assessments`,
-        'MOY Assessment'
-        //TODO: Add EOY Assessment
+        'MOY Assessment',
       ],
     },
     yaxis: {
@@ -148,6 +147,7 @@ function handleResponse(growthData) {
 
   const plotConfig = {
     displayModeBar: false,
+    responsive: true,
   }
 
   Plotly.newPlot('chart-container', plotData, plotLayout, plotConfig);
