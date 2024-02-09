@@ -1,40 +1,93 @@
 const apiBaseUrl = '/data/v1/growth';
 const groupby = ['usageCategory', 'week'];
 
-const USAGE_CATEGORIES = [/*'Expected', 'Actual',*/ 'High', 'Low'];
+
+const USAGE_CATEGORIES = ['Expected', 'Actual', 'High', 'Low'];
 const USAGE_CATEGORY_COLORS = {
-  // 'Expected': '#02733E',
-  // 'Actual': '#04BF8A',
+  'Expected': '#04BF8A',
+  'Actual': '#2176ff',
   'High': '#04BF8A',
   'Low': '#2176ff',
 }
 
-
 domo.get(`${apiBaseUrl}?useBeastMode=true&groupby=${groupby.join()}`).then(handleResponse);
 
 function handleResponse(growthData) {
+  //TODO: handle no data and errors
+
+  // map growth data to usage category
+  const growthByUsageCategoryMap = growthData.reduce((map, data) => {
+    const {usageCategory, week, avgWeekGrowth} = data;
+    if (!map.has(usageCategory)) {
+      const {
+        usageCategoryDisplayName,
+        isUsageCategoryVisible,
+        studentCount,
+        avgWeeksBetweenAssessment,
+      } = data;
+
+      map.set(usageCategory, {
+        usageCategoryDisplayName,
+        isUsageCategoryVisible,
+        studentCount,
+        avgWeeksBetweenAssessment,
+        usageCategoryColor: USAGE_CATEGORY_COLORS[usageCategory],
+        growthData: []
+      });
+    }
+
+    map.get(usageCategory).growthData.push({
+      week,
+      avgWeekGrowth,
+    });
+
+    return map;
+  }, new Map());
+
+
   let plotData = [];
-  let weeksGrowthByUsageCategory = {};
+  const plotLayout = {
+    title: 'Overall Growth CSM View',
+    xaxis: {
+      // title: `Average of ${overallAverageWeeksBetweenAssessment} weeks between assessments`,
+      fixedrange: true,
+      showgrid: false,
+      tickvals: [0, 0.5, 1],
+      ticktext: [
+        'BOY Assessment',
+        `Average of ${getOverallAverageWeeksBetweenAssessment(growthByUsageCategoryMap)} weeks between assessments`,
+        'MOY Assessment'
+        //TODO: Add EOY Assessment
+      ],
+    },
+    yaxis: {
+      title: 'Weeks of Growth',
+      fixedrange: true,
+    },
+    legend: {
+      orientation: 'h',
+      x: 0.5,
+      xanchor: 'center',
+      y: 1.1,
+      yanchor: 'top',
+    },
+    annotations: [],
+  };
 
-  USAGE_CATEGORIES.forEach(usageCategory => {
-    const usageCategoryData = growthData
-      .filter(data => data.usageCategory === usageCategory)
-      .sort((a, b) => a.avgWeekGrowth - b.avgWeekGrowth);
-    weeksGrowthByUsageCategory[usageCategory] = usageCategoryData[usageCategoryData.length - 1].avgWeekGrowth;
+  growthByUsageCategoryMap.forEach((usageCategoryData, usageCategory) => {
+    // only plot visible usage categories
+    if(!usageCategoryData.isUsageCategoryVisible) return;
 
-    const {
-      usageCategoryDisplayName,
-      studentCount
-    } = usageCategoryData[0];
+    const { usageCategoryDisplayName, usageCategoryColor, studentCount } = usageCategoryData;
 
     // add markers
-    usageCategoryData.forEach((data, index) => {
+    usageCategoryData.growthData.forEach((data, index) => {
       plotData.push({
         x: [index],
         y: [data.avgWeekGrowth],
         mode: 'markers',
         marker: {
-          color: USAGE_CATEGORY_COLORS[usageCategory],
+          color: usageCategoryColor,
           size: 9,
         },
         hoverinfo: 'skip',
@@ -42,10 +95,10 @@ function handleResponse(growthData) {
       });
     });
 
-    let xCoordinates = usageCategoryData.map((data, index) => index);
-    let yCoordinates = usageCategoryData.map(data => data.avgWeekGrowth);
+    let xCoordinates = usageCategoryData.growthData.map((data, index) => index);
+    let yCoordinates = usageCategoryData.growthData.map(data => data.avgWeekGrowth);
 
-     // add trace
+    // add trace
     plotData.push({
       name: usageCategoryDisplayName,
       x: xCoordinates,
@@ -53,11 +106,22 @@ function handleResponse(growthData) {
       mode: 'lines',
       hoverinfo: 'skip',
       line: {
-        color: USAGE_CATEGORY_COLORS[usageCategory],
+        color: usageCategoryColor,
         width: 4,
       },
     });
 
+    // add annotation for last data point
+    plotLayout.annotations.push({
+      text: `${Math.round(yCoordinates[yCoordinates.length - 1] * 10) / 10} weeks`,
+      font: { size:13 },
+      xref: 'paper',
+      x: 0.955,
+      y: yCoordinates[yCoordinates.length - 1],
+      xanchor: 'left',
+      yanchor: 'middle',
+      showarrow: false
+    });
 
     // add trace of hidden markers for student count hover
     let yStart = yCoordinates[0];
@@ -81,59 +145,6 @@ function handleResponse(growthData) {
       hoverlabel: {bgcolor: 'deep', font: { size: 16} },
       showlegend: false,
     });
-});
-
-  // Sum up all the avgWeeksBetweenAssessment values
-  const totalWeeksBetweenAssessments = growthData
-    .map(data => data.avgWeeksBetweenAssessment)
-    .reduce((a, b) => a + b, 0);
-
-  // Calculate the average weeks between assessments
-  let overallAverageWeeksBetweenAssessment = totalWeeksBetweenAssessments / growthData.length;
-
-  // Round the average to the nearest one decimal place
-  overallAverageWeeksBetweenAssessment = Math.round(overallAverageWeeksBetweenAssessment * 10) / 10;
-
-  const plotLayout = {
-    title: 'Overall Growth CSM View',
-    xaxis: {
-      // title: `Average of ${overallAverageWeeksBetweenAssessment} weeks between assessments`,
-      fixedrange: true,
-      showgrid: false,
-      tickvals: [0, 0.5, 1],
-      ticktext: [
-        'BOY Assessment',
-        `Average of ${overallAverageWeeksBetweenAssessment} weeks between assessments`,
-        'MOY Assessment'
-        //TODO: Add EOY Assessment
-      ],
-    },
-    yaxis: {
-      title: 'Weeks of Growth',
-      fixedrange: true,
-    },
-    legend: {
-      orientation: 'h',
-      x: 0.5,
-      xanchor: 'center',
-      y: 1.1,
-      yanchor: 'top',
-    },
-    annotations: [],
-  };
-
-  USAGE_CATEGORIES.forEach((usageCategory) => {
-    let result = {
-      text: `${Math.round(weeksGrowthByUsageCategory[usageCategory] * 10) / 10} weeks`,
-      font: { size:13 },
-      xref: 'paper',
-      x: 0.955,
-      y: weeksGrowthByUsageCategory[usageCategory],
-      xanchor: 'left',
-      yanchor: 'middle',
-      showarrow: false
-    };
-    plotLayout.annotations.push(result);
   });
 
   const plotConfig = {
@@ -141,4 +152,19 @@ function handleResponse(growthData) {
   }
 
   Plotly.newPlot('chart-container', plotData, plotLayout, plotConfig);
+}
+
+function getOverallAverageWeeksBetweenAssessment(growthByUsageCategoryMap) {
+  // Flatten the arrays in the map into a single array
+  let allData = [...growthByUsageCategoryMap.values()].flat();
+  // Filter the data where isUsageCategoryVisible equals 1
+  let visibleData = allData.filter(data => data.isUsageCategoryVisible === 1);
+  // Calculate the sum of all avgWeeksBetweenAssessment for the filtered data
+  let sum = visibleData.reduce((total, data) => total + data.avgWeeksBetweenAssessment, 0);
+  // Calculate the average
+  let average = sum / visibleData.length;
+  // round to 1 decimal place
+  average = Math.round(average * 10) / 10;
+
+  return average;
 }

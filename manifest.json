@@ -35,6 +35,10 @@
         {
           "alias": "studentCount",
           "columnName": "# Students Dataset Field"
+        },
+        {
+          "alias": "isUsageCategoryVisible",
+          "columnName": "Show or No"
         }
       ]
     }
