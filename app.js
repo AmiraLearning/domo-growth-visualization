@@ -47,7 +47,6 @@ function handleResponse(growthData) {
 
   let plotData = [];
   const plotLayout = {
-    title: 'Overall Growth CSM View',
     xaxis: {
       // title: `Average of ${overallAverageWeeksBetweenAssessment} weeks between assessments`,
       fixedrange: true,
