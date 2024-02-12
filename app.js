@@ -13,13 +13,13 @@ let plotData = [];
 const plotLayout = {
   margin: { t: 10 },
   xaxis: {
-    // rangemode: 'nonnegative',
     fixedrange: true,
     showgrid: false,
-    tickvals: [0, 1],
+    tickvals: [0, 50, 100],
     ticktext: [
       'BOY Assessment',
       'MOY Assessment',
+      'EOY Assessment',
     ],
   },
   yaxis: {
@@ -34,6 +34,7 @@ const plotLayout = {
     yanchor: 'top',
   },
   annotations: [],
+  shapes: [],
 };
 
 domo.get(`${apiBaseUrl}?useBeastMode=true&groupby=${groupby.join()}`).then(handleResponse);
@@ -78,21 +79,21 @@ function handleResponse(growthData) {
     responsive: true,
   }
 
-
   Plotly.newPlot('chart-container', plotData, plotLayout, plotConfig);
 }
 
 function plotVisibleUsageCategories(growthByUsageCategoryMap) {
+  let usageCategoryIndex = 0;
   growthByUsageCategoryMap.forEach((usageCategoryData) => {
     // only plot visible usage categories
     if(!usageCategoryData.isUsageCategoryVisible) return;
 
     const { usageCategoryDisplayName, usageCategoryColor, studentCount } = usageCategoryData;
 
-    // add markers
+    // add current growh markers and trace
     usageCategoryData.growthData.forEach((data, index) => {
       plotData.push({
-        x: [index],
+        x: [index * 50],
         y: [data.avgWeekGrowth],
         mode: 'markers',
         marker: {
@@ -104,10 +105,26 @@ function plotVisibleUsageCategories(growthByUsageCategoryMap) {
       });
     });
 
-    let xCoordinates = usageCategoryData.growthData.map((data, index) => index);
+    let xCoordinates = usageCategoryData.growthData.map((data, index) => index * 50);
     let yCoordinates = usageCategoryData.growthData.map(data => data.avgWeekGrowth);
 
-    // add trace
+    // add annotation for last data point
+    let textAngle = findAngleBetween(xCoordinates[0], yCoordinates[0], xCoordinates[xCoordinates.length - 1], yCoordinates[yCoordinates.length - 1]);
+    let annotationX = xCoordinates[xCoordinates.length - 1];
+    let annotationY = usageCategoryIndex === 0 ? yCoordinates[yCoordinates.length - 1] - 2 : yCoordinates[yCoordinates.length - 1] + 3;
+    plotLayout.annotations.push({
+      name: usageCategoryDisplayName,
+      text: `${Math.round(yCoordinates[yCoordinates.length - 1] * 10) / 10} weeks`,
+      textangle: textAngle - 8,
+      font: {
+        size: 13,
+        color: usageCategoryColor,
+      },
+      x: annotationX,
+      y: annotationY,
+      showarrow: false
+    });
+
     plotData.push({
       name: usageCategoryDisplayName,
       x: xCoordinates,
@@ -120,43 +137,63 @@ function plotVisibleUsageCategories(growthByUsageCategoryMap) {
       },
     });
 
-    // display average weeks between assessments on x-axis
-    plotLayout.xaxis.title = `${getOverallAverageWeeksBetweenAssessment(growthByUsageCategoryMap)} average weeks between assessments`,
-
-    // add annotation for last data point
-    plotLayout.annotations.push({
-      text: `${Math.round(yCoordinates[yCoordinates.length - 1] * 10) / 10} weeks`,
-      font: { size:13 },
-      xref: 'paper',
-      x: 0.955,
-      y: yCoordinates[yCoordinates.length - 1],
-      xanchor: 'left',
-      yanchor: 'middle',
-      showarrow: false
+    // add projected growth markers and trace
+    let projectedXCoordinates = [50, 100];
+    let projectedYCoordinates = [yCoordinates[yCoordinates.length - 1], (yCoordinates[yCoordinates.length - 1] * 2)];
+    plotData.push({
+      x: projectedXCoordinates,
+      y: projectedYCoordinates,
+      mode: 'markers',
+      marker: {
+        color: usageCategoryColor,
+        size: 9,
+      },
+      hoverinfo: 'skip',
+      showlegend: false,
     });
-
-    // add trace of hidden markers for student count hover
-    let yStart = yCoordinates[0];
-    let yEnd = yCoordinates[1];
-    let xStart = xCoordinates[0];
-    let xEnd = xCoordinates[1];
-    let steps = 100; // Define the number of steps for interpolation
-
-    for(let i = 0; i <= steps; i++) {
-      xCoordinates.push(xStart + (xEnd - xStart) * (i / steps));
-      yCoordinates.push(yStart + (yEnd - yStart) * (i / steps));
-    }
 
     plotData.push({
       name: usageCategoryDisplayName,
-      x: xCoordinates,
-      y: yCoordinates,
+      x: projectedXCoordinates,
+      y: projectedYCoordinates,
+      mode: 'lines',
+      hoverinfo: 'skip',
+      showlegend: false,
+      line: {
+        color: usageCategoryColor,
+        width: 4,
+        dash: 'dashdot'
+      },
+    });
+
+    // display average weeks between assessments on x-axis
+    plotLayout.xaxis.title = `${getOverallAverageWeeksBetweenAssessment(growthByUsageCategoryMap)} average weeks between assessments`;
+
+    // add trace of hidden markers for student count hover
+    let hoverXCoordinates = [];
+    let hoverYCoordinates = [];
+    let yStart = yCoordinates[0];
+    let yEnd = projectedYCoordinates[1];
+    let xStart = xCoordinates[0];
+    let xEnd = projectedXCoordinates[1];
+    let steps = 100; // define the number of steps for interpolation
+
+    for(let i = 0; i <= steps; i++) {
+      hoverXCoordinates.push(xStart + (xEnd - xStart) * (i / steps));
+      hoverYCoordinates.push(yStart + (yEnd - yStart) * (i / steps));
+    }
+
+    plotData.push({
+      x: hoverXCoordinates,
+      y: hoverYCoordinates,
       mode: 'markers',
       marker: {color: 'rgba(0,0,0,0.0)'},
       hovertemplate: `${studentCount.toLocaleString()} students <extra></extra>`,
       hoverlabel: {bgcolor: 'deep', font: { size: 16} },
       showlegend: false,
     });
+
+    usageCategoryIndex++;
   });
 }
 
@@ -198,4 +235,16 @@ function getOverallAverageWeeksBetweenAssessment(growthByUsageCategoryMap) {
   average = Math.round(average * 10) / 10;
 
   return average;
+}
+
+function findAngleBetween(x1,  y1,  x2,  y2)
+{
+  // find angle in radians
+  let   calc_angle = Math.atan2(y2 - y1,  x2 - x1);
+  // make negative angles positive by adding 360 degrees
+  if(calc_angle < 0) calc_angle += Math.PI * 2;
+
+  // convert angle from radians to degrees then log
+  // return calc_angle * (180 / Math.PI);
+  return calc_angle * -100;
 }
