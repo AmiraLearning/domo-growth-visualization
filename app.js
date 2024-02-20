@@ -15,7 +15,10 @@ const plotLayout = {
   xaxis: {
     fixedrange: true,
     showgrid: false,
+    minallowed: -3,
+    maxallowed: 103,
     tickvals: [0, 50, 100],
+    tickangle: 0,
     ticktext: [
       'BOY Assessment',
       'MOY Assessment',
@@ -25,6 +28,7 @@ const plotLayout = {
   yaxis: {
     title: 'Weeks of Growth',
     fixedrange: true,
+    minallowed: -1,
   },
   legend: {
     orientation: 'h',
@@ -40,6 +44,9 @@ const plotLayout = {
 domo.get(`${apiBaseUrl}?useBeastMode=true&groupby=${groupby.join()}`).then(handleResponse);
 
 function handleResponse(growthData) {
+  // sort growth data by avgWeekGrowth for display order
+  growthData = growthData.sort((a, b) => b.avgWeekGrowth - a.avgWeekGrowth);
+
   const isAnyUsageCategoryVisible = growthData.some(data => data.isUsageCategoryVisible === 1);
 
   // map growth data to usage category
@@ -63,10 +70,12 @@ function handleResponse(growthData) {
       });
     }
 
-    map.get(usageCategory).growthData.push({
-      week,
-      avgWeekGrowth,
-    });
+
+    // add growth data to usage category and sort by avgWeekGrowth for display order
+    let categoryGrowthData = map.get(usageCategory).growthData;
+    categoryGrowthData.push({week, avgWeekGrowth});
+    categoryGrowthData = categoryGrowthData.sort((a, b) => a.avgWeekGrowth - b.avgWeekGrowth);
+    map.get(usageCategory).growthData = categoryGrowthData;
 
     return map;
   }, new Map());
@@ -109,20 +118,29 @@ function plotVisibleUsageCategories(growthByUsageCategoryMap) {
     let yCoordinates = usageCategoryData.growthData.map(data => data.avgWeekGrowth);
 
     // add annotation for last data point
-    let textAngle = findAngleBetween(xCoordinates[0], yCoordinates[0], xCoordinates[xCoordinates.length - 1], yCoordinates[yCoordinates.length - 1]);
-    let annotationX = xCoordinates[xCoordinates.length - 1];
-    let annotationY = usageCategoryIndex === 0 ? yCoordinates[yCoordinates.length - 1] - 2 : yCoordinates[yCoordinates.length - 1] + 3;
+    const xArrowShift = 50;
+    const yArrowShift = 30;
+
+    let arrowX = usageCategoryIndex === 0 ? -(xArrowShift) : xArrowShift;
+    let arrowY = usageCategoryIndex === 0 ? -(yArrowShift) : yArrowShift;
     plotLayout.annotations.push({
-      name: usageCategoryDisplayName,
-      text: `${Math.round(yCoordinates[yCoordinates.length - 1] * 10) / 10} weeks`,
-      textangle: textAngle - 8,
+      x: xCoordinates[xCoordinates.length - 1],
+      y: yCoordinates[yCoordinates.length - 1],
+      xref: 'x',
+      yref: 'y',
+      text: `${usageCategoryIndex === 0 ? 'Weeks of growth:<br>' : ''}${Math.round(yCoordinates[yCoordinates.length - 1] * 10) / 10} weeks at MOY`,
       font: {
-        size: 13,
+        size: 11,
         color: usageCategoryColor,
       },
-      x: annotationX,
-      y: annotationY,
-      showarrow: false
+      showarrow: true,
+      ax: arrowX,
+      ay: arrowY,
+      align: 'center',
+      arrowhead: 2,
+      arrowsize: .5,
+      arrowwidth: 1.5,
+      arrowcolor: usageCategoryColor,
     });
 
     plotData.push({
@@ -164,6 +182,26 @@ function plotVisibleUsageCategories(growthByUsageCategoryMap) {
         width: 4,
         dash: 'dashdot'
       },
+    });
+
+    // add annotation for projected data points
+    plotLayout.annotations.push({
+      x: projectedXCoordinates[projectedXCoordinates.length - 1],
+      y: projectedYCoordinates[projectedYCoordinates.length - 1],
+      xref: 'x',
+      yref: 'y',
+      text: `${Math.round(projectedYCoordinates[projectedYCoordinates.length - 1] * 10) / 10} weeks<br>at EOY`,
+      font: {
+        size: 11,
+        color: usageCategoryColor,
+      },
+      showarrow: true,
+      ax: 50,
+      ay: 0,
+      arrowhead: 2,
+      arrowsize: .5,
+      arrowwidth: 1.5,
+      arrowcolor: usageCategoryColor,
     });
 
     // display average weeks between assessments on x-axis
@@ -235,16 +273,4 @@ function getOverallAverageWeeksBetweenAssessment(growthByUsageCategoryMap) {
   average = Math.round(average * 10) / 10;
 
   return average;
-}
-
-function findAngleBetween(x1,  y1,  x2,  y2)
-{
-  // find angle in radians
-  let   calc_angle = Math.atan2(y2 - y1,  x2 - x1);
-  // make negative angles positive by adding 360 degrees
-  if(calc_angle < 0) calc_angle += Math.PI * 2;
-
-  // convert angle from radians to degrees then log
-  // return calc_angle * (180 / Math.PI);
-  return calc_angle * -100;
 }
