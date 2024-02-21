@@ -44,10 +44,11 @@ const plotLayout = {
 domo.get(`${apiBaseUrl}?useBeastMode=true&groupby=${groupby.join()}`).then(handleResponse);
 
 function handleResponse(growthData) {
+  if(!growthData)
+    return displayDataNotAvailableMessage();
+
   // sort growth data by avgWeekGrowth for display order
   growthData = growthData.sort((a, b) => b.avgWeekGrowth - a.avgWeekGrowth);
-
-  const isAnyUsageCategoryVisible = growthData.some(data => data.isUsageCategoryVisible === 1);
 
   // map growth data to usage category
   const growthByUsageCategoryMap = growthData.reduce((map, data) => {
@@ -79,6 +80,8 @@ function handleResponse(growthData) {
     return map;
   }, new Map());
 
+  // check if any usage category is visible
+  const isAnyUsageCategoryVisible = growthData.some(data => data.isUsageCategoryVisible === 1);
   if(!isAnyUsageCategoryVisible) displayNoDataMessage();
   else plotVisibleUsageCategories(growthByUsageCategoryMap);
 
@@ -384,4 +387,13 @@ function getApproximateMonthsFromWeeks(weeks) {
 
   // return the formatted string
   return `${relativeToZeroSymbol}${months}`;
+}
+
+function displayDataNotAvailableMessage() {
+  document.getElementById('message-container').innerHTML = `
+    <div>
+      District data is not available for school admins.
+      <p>Please see the Overall Growth - School Level chart for your school's growth data</p>
+    </div>
+  `;
 }
