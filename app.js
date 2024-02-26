@@ -1,6 +1,3 @@
-const apiBaseUrl = '/data/v1/growth';
-const groupby = ['usageCategory', 'week'];
-
 const USAGE_CATEGORIES = ['Expected', 'Actual', 'High', 'Low'];
 const USAGE_CATEGORY_COLORS = {
   'Expected': '#04BF8A',
@@ -41,7 +38,15 @@ const plotLayout = {
   shapes: [],
 };
 
-domo.get(`${apiBaseUrl}?useBeastMode=true&groupby=${groupby.join()}`).then(handleResponse);
+getGrowthData().then(handleResponse)
+
+function getGrowthData() {
+  const apiBaseUrl = '/data/v1/growth';
+  const filters = ['district_partition=1']
+  const groupby = ['usageCategory', 'week'];
+
+  return domo.get(`${apiBaseUrl}?useBeastMode=true&filter=${filters.join()}&groupby=${groupby.join()}`);
+}
 
 function handleResponse(growthData) {
   if(!growthData)
