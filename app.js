@@ -95,6 +95,7 @@ function handleResponse(growthData) {
     responsive: true,
   }
 
+  document.getElementById('app-container').innerHTML = '<div id="chart-container"></div>';
   Plotly.newPlot('chart-container', plotData, plotLayout, plotConfig);
 }
 
@@ -130,24 +131,23 @@ function plotVisibleUsageCategories(growthByUsageCategoryMap) {
     let yCoordinates = usageCategoryData.growthData.map(data => data.avgWeekGrowth);
 
     // add annotation for last data point
-    let arrowX = usageCategoryIndex === 0 ? -50 : 20;
-    let arrowY = usageCategoryIndex === 0 ? -50 : 50;
+    let arrowY = usageCategoryIndex === 0 ? -60 : 50;
     plotLayout.annotations.push({
       x: xCoordinates[xCoordinates.length - 1],
       y: yCoordinates[yCoordinates.length - 1],
       xref: 'x',
       yref: 'y',
-      align: 'left',
+      align: 'center',
       text: `${usageCategoryIndex === 0 ? 'Weeks of growth:<br>' : ''}${Math.round(yCoordinates[yCoordinates.length - 1] * 10) / 10} weeks<br>at MOY`,
       font: {
         size: 12,
         color: usageCategoryColor,
       },
       showarrow: true,
-      ax: arrowX,
+      ax: 0,
       ay: arrowY,
-      arrowhead: 2,
-      arrowsize: .5,
+      arrowside: 'start',
+      startarrowhead: 4,
       arrowwidth: 1.5,
       arrowcolor: usageCategoryColor,
     });
@@ -188,10 +188,11 @@ function plotVisibleUsageCategories(growthByUsageCategoryMap) {
       mode: 'lines',
       hoverinfo: 'skip',
       showlegend: false,
+      opacity: 0.6,
       line: {
         color: usageCategoryColor,
         width: 4,
-        dash: 'dashdot'
+        dash: 'dash',
       },
     });
 
@@ -201,17 +202,17 @@ function plotVisibleUsageCategories(growthByUsageCategoryMap) {
       y: projectedYCoordinates[projectedYCoordinates.length - 1],
       xref: 'x',
       yref: 'y',
-      align: 'left',
+      align: 'center',
       text: `${Math.round(projectedYCoordinates[projectedYCoordinates.length - 1] * 10) / 10} weeks<br>at EOY`,
       font: {
-        size: 11,
+        size: 12,
         color: usageCategoryColor,
       },
       showarrow: true,
-      ax: 50,
-      ay: usageCategoryIndex === 0 ? -25 : 25,
-      arrowhead: 2,
-      arrowsize: .5,
+      ax: 0,
+      ay: usageCategoryIndex === 0 ? -45 : 50,
+      arrowside: 'start',
+      startarrowhead: 4,
       arrowwidth: 1.5,
       arrowcolor: usageCategoryColor,
     });
@@ -258,9 +259,9 @@ function plotGrowthDeltaAnnotations(visibleUsageCategories, weeksGrowthProjectio
     let moyDeltaLine = {
       type: 'line',
       x0: 50,
-      y0: moyHighestWeeksGrowth,
+      y0: moyHighestWeeksGrowth - 0.9,
       x1: 50,
-      y1: moyLowestWeeksGrowth,
+      y1: moyLowestWeeksGrowth + 0.75,
       line: {
         color: '#4f4f4f',
         width: 2,
@@ -277,15 +278,16 @@ function plotGrowthDeltaAnnotations(visibleUsageCategories, weeksGrowthProjectio
       yref: 'y',
       text: `${getPercentGrowthIncrease(moyLowestWeeksGrowth, moyHighestWeeksGrowth)}% more reading<br>growth as of<br>middle of year<br>(observed)`,
       font: {
-        size: 11,
+        size: 12,
         color: '#4f4f4f',
       },
       align: 'left',
       showarrow: true,
       ax: 140,
       ay: 35,
-      arrowsize: 1.5,
-      arrowwidth: 1,
+      arrowside: 'start',
+      startarrowhead: 4,
+      arrowwidth: 1.5,
       arrowcolor: '#4f4f4f',
     });
 
@@ -297,16 +299,15 @@ function plotGrowthDeltaAnnotations(visibleUsageCategories, weeksGrowthProjectio
     let projectedDeltaLine = {
       type: 'line',
       x0: 100,
-      y0: projectedHighestWeeksGrowth,
+      y0: projectedHighestWeeksGrowth - 0.9,
       x1: 100,
-      y1: projectedLowestWeeksGrowth,
+      y1: projectedLowestWeeksGrowth + 0.75,
       line: {
         color: '#4f4f4f',
         width: 2,
         dash: 'dot'
       }
     }
-
     plotLayout.shapes.push(projectedDeltaLine);
 
     // add annotation for projected growth delta
@@ -317,15 +318,16 @@ function plotGrowthDeltaAnnotations(visibleUsageCategories, weeksGrowthProjectio
       yref: 'y',
       text: `${getApproximateMonthsFromWeeks(projectedWeeksGrowthDelta)} months of<br>reading growth<br>by end of year<br>(projected)`,
       font: {
-        size: 11,
+        size: 12,
         color: '#4f4f4f',
       },
       align: 'left',
       showarrow: true,
-      ax: 65,
+      ax: 75,
       ay: 0,
-      arrowsize: 1.5,
-      arrowwidth: 1,
+      arrowside: 'start',
+      startarrowhead: 4,
+      arrowwidth: 1.5,
       arrowcolor: '#4f4f4f',
     });
 }
@@ -395,8 +397,8 @@ function getApproximateMonthsFromWeeks(weeks) {
 }
 
 function displayDataNotAvailableMessage() {
-  document.getElementById('message-container').innerHTML = `
-    <div>
+  document.getElementById('app-container').innerHTML = `
+    <div id="message-container">
       District data is not available for school admins.
       <p>Please see the Overall Growth - School Level chart for your school's growth data</p>
     </div>
