@@ -1,0 +1,22 @@
+{
+  "name": "domo-growth-visualization",
+  "version": "1.0.0",
+  "description": "Growth Summary Domo Visualization",
+  "author": "Amira Learning",
+  "license": "ISC",
+  "dependencies": {
+    "ryuu.js": "^4.6.0"
+  },
+  "devDependencies": {
+    "copy-files-from-to": "^3.9.1"
+  },
+  "scripts": {
+    "postinstall": "copy-files-from-to"
+  },
+  "copyFiles": [
+    {
+      "from": "node_modules/ryuu.js/dist/domo.js",
+      "to": "./"
+    }
+  ]
+}

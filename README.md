@@ -4,6 +4,9 @@
 1. Clone the repository: `git clone https://github.com/your-username/domo-growth-visualization.git`
 2. Navigate to the project directory: `cd domo-growth-visualization`
 3. Install dependencies: `npm install`
+- NOTE: For development, `postinstall` copies `domo.js` to the project's root directory for `index.html` to include.  When changes are deployed, `domo publish` ignores `domo.js` because it's delivered by the Domo instance
+
+
 4. Connect to DOMO
  - Install [DOMO Apps CLI](https://developer.domo.com/portal/6hlzv1hinkq19-setup-and-installation#step-1-install-the-domo-apps-cli)
   - Run `domo login`
