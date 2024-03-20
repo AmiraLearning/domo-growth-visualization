@@ -1,7 +1,7 @@
 const USAGE_CATEGORIES = ['Expected', 'Actual', 'High', 'Low'];
 const USAGE_CATEGORY_COLORS = {
-  'Expected': '#04BF8A',
-  'Actual': '#2176ff',
+  'Expected': '#09a6f3',
+  'Actual': '#04BF8A',
   'High': '#04BF8A',
   'Low': '#2176ff',
 }
