@@ -1,8 +1,16 @@
 const USAGE_CATEGORIES = ['Expected', 'Actual', 'High', 'Low'];
+const USAGE_CAGTEGORY_DISPLAY_NAMES = {
+  'Expected': 'Expected Growth',
+  'Actual': 'Overall Growth',
+  'High': 'High Use in both windows',
+  'Mid': 'High Use in one window',
+  'Low': 'Low Use in both windows',
+}
 const USAGE_CATEGORY_COLORS = {
   'Expected': '#09a6f3',
   'Actual': '#04BF8A',
   'High': '#04BF8A',
+  'Mid': '#bf212f',
   'Low': '#2176ff',
 }
 
@@ -41,10 +49,9 @@ const plotLayout = {
 getGrowthData().then(handleResponse)
 
 function getGrowthData() {
-  const apiBaseUrl = '/data/v1/growth';
+  const apiBaseUrl = '/data/v1/growthsummary';
   const filters = ['district_partition=1']
   const groupby = ['usageCategory', 'week'];
-
   return domo.get(`${apiBaseUrl}?useBeastMode=true&filter=${filters.join()}&groupby=${groupby.join()}`);
 }
 
@@ -52,34 +59,48 @@ function handleResponse(growthData) {
   if(!growthData)
     return displayDataNotAvailableMessage();
 
-  // sort growth data by avgWeekGrowth for display order
-  growthData = growthData.sort((a, b) => b.avgWeekGrowth - a.avgWeekGrowth);
+    // order by growth data by avgWeeksGrowth in descending order so highest growth category is on top
+    growthData = growthData.sort((a, b) => b.avgWeeksGrowth - a.avgWeeksGrowth);
 
   // map growth data to usage category
   const growthByUsageCategoryMap = growthData.reduce((map, data) => {
-    const {usageCategory, week, avgWeekGrowth} = data;
+    const { usageCategory, week, avgWeeksGrowth, showActualEOYGrowth } = data;
     if (!map.has(usageCategory)) {
       const {
-        usageCategoryDisplayName,
+        usageCategory,
         isUsageCategoryVisible,
         studentCount,
-        avgWeeksBetweenAssessment,
+        avgWeeksBetweenAssessmentsBOYtoMOY,
+        avgWeeksBetweenAssessmentsMOYtoEOY,
+        showActualEOYGrowth,
       } = data;
 
       map.set(usageCategory, {
-        usageCategoryDisplayName,
+        usageCategory,
+        usageCategoryDisplayName: USAGE_CAGTEGORY_DISPLAY_NAMES[usageCategory],
         isUsageCategoryVisible,
         studentCount,
-        avgWeeksBetweenAssessment,
+        avgWeeksBetweenAssessmentsBOYtoMOY,
+        avgWeeksBetweenAssessmentsMOYtoEOY,
         usageCategoryColor: USAGE_CATEGORY_COLORS[usageCategory],
+        showActualEOYGrowth,
         growthData: []
       });
     }
 
-    // add growth data to usage category and sort by avgWeekGrowth for display order
+    // add growth data to usage category and sort by avgWeeksGrowth for display order
     let categoryGrowthData = map.get(usageCategory).growthData;
-    categoryGrowthData.push({week, avgWeekGrowth});
-    categoryGrowthData = categoryGrowthData.sort((a, b) => a.avgWeekGrowth - b.avgWeekGrowth);
+
+    // don't add to array when week === 'EOY Assessment' and !showActualEOYGrowth
+    if (!(week === 'EOY Assessment' && !showActualEOYGrowth)) {
+      categoryGrowthData.push({ week, avgWeeksGrowth });
+    }
+
+    // sort growth data for display order
+    const order = ["BOY Assessment", "MOY Assessment", "EOY Assessment"];
+    categoryGrowthData = categoryGrowthData.sort((a, b) => {
+      return order.indexOf(a.week) - order.indexOf(b.week);
+    });
     map.get(usageCategory).growthData = categoryGrowthData;
 
     return map;
@@ -112,11 +133,13 @@ function plotVisibleUsageCategories(growthByUsageCategoryMap) {
 
     const { usageCategoryDisplayName, usageCategoryColor, studentCount } = usageCategoryData;
 
-    // add current growth markers and trace
+    // add current growth markers
     usageCategoryData.growthData.forEach((data, index) => {
+      let xCoordinate = index * 50;
+      let yCoordinate = data.avgWeeksGrowth;
       plotData.push({
-        x: [index * 50],
-        y: [data.avgWeekGrowth],
+        x: [xCoordinate],
+        y: [yCoordinate],
         mode: 'markers',
         marker: {
           color: usageCategoryColor,
@@ -125,33 +148,38 @@ function plotVisibleUsageCategories(growthByUsageCategoryMap) {
         hoverinfo: 'skip',
         showlegend: false,
       });
-    });
 
+      if (data.week !== 'BOY Assessment' && usageCategoryData.usageCategory !== 'Mid') {
+        // add annotations for current data points
+        let windowDisplayName;
+        if(data.week === 'MOY Assessment') windowDisplayName = 'MOY';
+        if(data.week === 'EOY Assessment') windowDisplayName = 'EOY';
+
+        plotLayout.annotations.push({
+          x: xCoordinate,
+          y: yCoordinate,
+          xref: 'x',
+          yref: 'y',
+          align: 'center',
+          text: `${usageCategoryIndex === 0 ? 'Weeks of growth:<br>' : ''}${Math.round(data.avgWeeksGrowth * 10) / 10} weeks<br>at ${windowDisplayName}`,
+          font: {
+            size: 12,
+            color: usageCategoryColor,
+          },
+          showarrow: true,
+          ax: 0,
+          ay: usageCategoryIndex === 0 ? -60 : 50,
+          arrowside: 'start',
+          startarrowhead: 4,
+          arrowwidth: 1.5,
+          arrowcolor: usageCategoryColor,
+        });
+      }
+    })
+
+    // add trace for current growth data
     let xCoordinates = usageCategoryData.growthData.map((data, index) => index * 50);
-    let yCoordinates = usageCategoryData.growthData.map(data => data.avgWeekGrowth);
-
-    // add annotation for last data point
-    let arrowY = usageCategoryIndex === 0 ? -60 : 50;
-    plotLayout.annotations.push({
-      x: xCoordinates[xCoordinates.length - 1],
-      y: yCoordinates[yCoordinates.length - 1],
-      xref: 'x',
-      yref: 'y',
-      align: 'center',
-      text: `${usageCategoryIndex === 0 ? 'Weeks of growth:<br>' : ''}${Math.round(yCoordinates[yCoordinates.length - 1] * 10) / 10} weeks<br>at MOY`,
-      font: {
-        size: 12,
-        color: usageCategoryColor,
-      },
-      showarrow: true,
-      ax: 0,
-      ay: arrowY,
-      arrowside: 'start',
-      startarrowhead: 4,
-      arrowwidth: 1.5,
-      arrowcolor: usageCategoryColor,
-    });
-
+    let yCoordinates = usageCategoryData.growthData.map(data => data.avgWeeksGrowth);
     plotData.push({
       name: usageCategoryDisplayName,
       x: xCoordinates,
@@ -164,61 +192,67 @@ function plotVisibleUsageCategories(growthByUsageCategoryMap) {
       },
     });
 
-    // add projected growth markers and trace
+    // when actual EOY growth isn't displayed, show projected EOY growth
     let projectedXCoordinates = [50, 100];
     let projectedYCoordinates = [yCoordinates[yCoordinates.length - 1], (yCoordinates[yCoordinates.length - 1] * 2)];
-    growthProjections.push({usageCategoryDisplayName, projectedWeeksGrowth: projectedYCoordinates[projectedYCoordinates.length - 1]});
+    if (!usageCategoryData.showActualEOYGrowth) {
+      // add projected growth markers and trace
+      let projectedXCoordinates = [50, 100];
+      let projectedYCoordinates = [yCoordinates[yCoordinates.length - 1], (yCoordinates[yCoordinates.length - 1] * 2)];
+      growthProjections.push({ usageCategoryDisplayName, projectedWeeksGrowth: projectedYCoordinates[projectedYCoordinates.length - 1] });
 
-    plotData.push({
-      x: projectedXCoordinates,
-      y: projectedYCoordinates,
-      mode: 'markers',
-      marker: {
-        color: usageCategoryColor,
-        size: 9,
-      },
-      hoverinfo: 'skip',
-      showlegend: false,
-    });
+      plotData.push({
+        x: projectedXCoordinates,
+        y: projectedYCoordinates,
+        mode: 'markers',
+        marker: {
+          color: usageCategoryColor,
+          size: 9,
+        },
+        hoverinfo: 'skip',
+        showlegend: false,
+      });
 
-    plotData.push({
-      name: usageCategoryDisplayName,
-      x: projectedXCoordinates,
-      y: projectedYCoordinates,
-      mode: 'lines',
-      hoverinfo: 'skip',
-      showlegend: false,
-      opacity: 0.6,
-      line: {
-        color: usageCategoryColor,
-        width: 4,
-        dash: 'dash',
-      },
-    });
+      plotData.push({
+        name: usageCategoryDisplayName,
+        x: projectedXCoordinates,
+        y: projectedYCoordinates,
+        mode: 'lines',
+        hoverinfo: 'skip',
+        showlegend: false,
+        opacity: 0.6,
+        line: {
+          color: usageCategoryColor,
+          width: 4,
+          dash: 'dash',
+        },
+      });
 
-    // add annotation for projected data points
-    plotLayout.annotations.push({
-      x: projectedXCoordinates[projectedXCoordinates.length - 1],
-      y: projectedYCoordinates[projectedYCoordinates.length - 1],
-      xref: 'x',
-      yref: 'y',
-      align: 'center',
-      text: `${Math.round(projectedYCoordinates[projectedYCoordinates.length - 1] * 10) / 10} weeks<br>at EOY`,
-      font: {
-        size: 12,
-        color: usageCategoryColor,
-      },
-      showarrow: true,
-      ax: 0,
-      ay: usageCategoryIndex === 0 ? -45 : 50,
-      arrowside: 'start',
-      startarrowhead: 4,
-      arrowwidth: 1.5,
-      arrowcolor: usageCategoryColor,
-    });
+      // add annotation for projected data points
+      plotLayout.annotations.push({
+        x: projectedXCoordinates[projectedXCoordinates.length - 1],
+        y: projectedYCoordinates[projectedYCoordinates.length - 1],
+        xref: 'x',
+        yref: 'y',
+        align: 'center',
+        text: `${Math.round(projectedYCoordinates[projectedYCoordinates.length - 1] * 10) / 10} weeks<br>at EOY`,
+        font: {
+          size: 12,
+          color: usageCategoryColor,
+        },
+        showarrow: true,
+        ax: 0,
+        ay: usageCategoryIndex === 0 ? -45 : 50,
+        arrowside: 'start',
+        startarrowhead: 4,
+        arrowwidth: 1.5,
+        arrowcolor: usageCategoryColor,
+      });
+    }
 
     // display average weeks between assessments on x-axis
-    plotLayout.xaxis.title = `${getOverallAverageWeeksBetweenAssessment(growthByUsageCategoryMap)} average weeks between assessments`;
+    let { averageBOYtoMOY, averageMOYtoEOY } = getOverallAverageWeeksBetweenAssessments(growthByUsageCategoryMap);
+    plotLayout.xaxis.title = `Average weeks between assessments:<br>BOY to MOY: ${averageBOYtoMOY}<br>MOY to EOY: ${averageMOYtoEOY}`;
 
     // add trace of hidden markers for student count hover
     let hoverXCoordinates = [];
@@ -252,45 +286,87 @@ function plotVisibleUsageCategories(growthByUsageCategoryMap) {
 }
 
 function plotGrowthDeltaAnnotations(visibleUsageCategories, weeksGrowthProjections) {
-    const moyHighestWeeksGrowth = visibleUsageCategories[0].growthData.find(_ => _.week === 'MOY Assessment').avgWeekGrowth;
-    const moyLowestWeeksGrowth = visibleUsageCategories[1].growthData.find(_ => _.week === 'MOY Assessment').avgWeekGrowth;
-    const moyAverageGrowth = Math.round((moyHighestWeeksGrowth + moyLowestWeeksGrowth) / 2 * 10) / 10;
+  const moyHighestWeeksGrowth = visibleUsageCategories[0].growthData.find(_ => _.week === 'MOY Assessment').avgWeeksGrowth;
+  const moyLowestWeeksGrowth = visibleUsageCategories[visibleUsageCategories.length - 1].growthData.find(_ => _.week === 'MOY Assessment').avgWeeksGrowth;
+  const moyAverageGrowth = Math.round((moyHighestWeeksGrowth + moyLowestWeeksGrowth) / 2 * 10) / 10;
 
-    let moyDeltaLine = {
+  let moyDeltaLine = {
+    type: 'line',
+    x0: 50,
+    y0: moyHighestWeeksGrowth - 0.9,
+    x1: 50,
+    y1: moyLowestWeeksGrowth + 0.75,
+    line: {
+      color: '#4f4f4f',
+      width: 2,
+      dash: 'dot'
+    }
+  }
+  plotLayout.shapes.push(moyDeltaLine);
+
+  // add annotation for MOY growth delta
+  plotLayout.annotations.push({
+    x: 50,
+    y: moyAverageGrowth,
+    xref: 'x',
+    yref: 'y',
+    text: `${getPercentGrowthIncrease(moyLowestWeeksGrowth, moyHighestWeeksGrowth)}% more reading<br>growth as of<br>middle of year<br>(observed)`,
+    font: {
+      size: 12,
+      color: '#4f4f4f',
+    },
+    align: 'left',
+    showarrow: true,
+    ax: -100,
+    ay: 0,
+    arrowside: 'start',
+    startarrowhead: 4,
+    arrowwidth: 1.5,
+    arrowcolor: '#4f4f4f',
+  });
+
+  const showActualEOYGrowth = visibleUsageCategories.some(category => category.showActualEOYGrowth);
+  if (showActualEOYGrowth) {
+    const eoyHighestWeeksGrowth = visibleUsageCategories[0].growthData.find(_ => _.week === 'EOY Assessment').avgWeeksGrowth;
+    const eoyLowestWeeksGrowth = visibleUsageCategories[visibleUsageCategories.length - 1].growthData.find(_ => _.week === 'EOY Assessment').avgWeeksGrowth;
+    const eoyAverageGrowth = Math.round((eoyHighestWeeksGrowth + eoyLowestWeeksGrowth) / 2 * 10) / 10;
+
+    let eoyDeltaLine = {
       type: 'line',
-      x0: 50,
-      y0: moyHighestWeeksGrowth - 0.9,
-      x1: 50,
-      y1: moyLowestWeeksGrowth + 0.75,
+      x0: 100,
+      y0: eoyHighestWeeksGrowth - 0.9,
+      x1: 100,
+      y1: eoyLowestWeeksGrowth + 0.75,
       line: {
         color: '#4f4f4f',
         width: 2,
         dash: 'dot'
       }
     }
-    plotLayout.shapes.push(moyDeltaLine);
+    plotLayout.shapes.push(eoyDeltaLine);
 
-    // add annotation for MOY growth delta
+    // add annotation for EOY growth delta
     plotLayout.annotations.push({
-      x: 50,
-      y: moyAverageGrowth,
+      x: 100,
+      y: eoyAverageGrowth,
       xref: 'x',
       yref: 'y',
-      text: `${getPercentGrowthIncrease(moyLowestWeeksGrowth, moyHighestWeeksGrowth)}% more reading<br>growth as of<br>middle of year<br>(observed)`,
+      text: `${getPercentGrowthIncrease(eoyLowestWeeksGrowth, eoyHighestWeeksGrowth)}% more<br>reading growth<br>at end of year<br>(observed)`,
       font: {
         size: 12,
         color: '#4f4f4f',
       },
       align: 'left',
       showarrow: true,
-      ax: 140,
-      ay: 35,
+      ax: 80,
+      ay: 0,
       arrowside: 'start',
       startarrowhead: 4,
       arrowwidth: 1.5,
       arrowcolor: '#4f4f4f',
     });
-
+  }
+  else {
     const projectedHighestWeeksGrowth = weeksGrowthProjections[0].projectedWeeksGrowth;
     const projectedLowestWeeksGrowth = weeksGrowthProjections[1].projectedWeeksGrowth;
     const projectedAverageGrowth = Math.round((projectedHighestWeeksGrowth + projectedLowestWeeksGrowth) / 2 * 10) / 10;
@@ -330,6 +406,7 @@ function plotGrowthDeltaAnnotations(visibleUsageCategories, weeksGrowthProjectio
       arrowwidth: 1.5,
       arrowcolor: '#4f4f4f',
     });
+  }
 }
 
 function displayNoDataMessage() {
@@ -357,22 +434,32 @@ function displayNoDataMessage() {
   });
 }
 
-function getOverallAverageWeeksBetweenAssessment(growthByUsageCategoryMap) {
+function getOverallAverageWeeksBetweenAssessments(growthByUsageCategoryMap) {
   // Flatten the arrays in the map into a single array
   let allData = [...growthByUsageCategoryMap.values()].flat();
+
   // Filter the data where isUsageCategoryVisible equals 1
   let visibleData = allData.filter(data => data.isUsageCategoryVisible === 1);
-  // Calculate the sum of all avgWeeksBetweenAssessment for the filtered data
-  let sum = visibleData.reduce((total, data) => total + data.avgWeeksBetweenAssessment, 0);
-  // Calculate the average
-  let average = sum / visibleData.length;
-  // round to 1 decimal place
-  average = Math.round(average * 10) / 10;
 
-  return average;
+  // Calculate the sum of all avgWeeksBetweenAssessment for the filtered data
+  let sumBOYtoMOY = visibleData.reduce((total, data) => total + data.avgWeeksBetweenAssessmentsBOYtoMOY, 0);
+  let sumMOYtoEOY = visibleData.reduce((total, data) => total + data.avgWeeksBetweenAssessmentsMOYtoEOY, 0);
+
+  // Calculate the average
+  let averageBOYtoMOY = sumBOYtoMOY / visibleData.length;
+  let averageMOYtoEOY = sumMOYtoEOY / visibleData.length;
+
+  // round to 1 decimal place
+  averageBOYtoMOY = Math.round(averageBOYtoMOY * 10) / 10;
+  averageMOYtoEOY = Math.round(averageMOYtoEOY * 10) / 10;
+
+  return {
+    averageBOYtoMOY,
+    averageMOYtoEOY,
+  };
 }
 
-function getPercentGrowthIncrease(lowestWeeksGrowth, highestWeeksGrowth){
+function getPercentGrowthIncrease(lowestWeeksGrowth, highestWeeksGrowth) {
   // calculate percent growth increase
   const percentGrowth = ((highestWeeksGrowth - lowestWeeksGrowth) / lowestWeeksGrowth) * 100;
 

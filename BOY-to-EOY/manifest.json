@@ -1,0 +1,54 @@
+{
+  "id": "cd6b1606-9248-4e73-8db3-1ba72f13763a",
+  "name": "Growth-Summary-BOY-to-EOY",
+  "fileName": "manifest.json",
+  "version": "1.0.0",
+  "size": {
+    "width": 3,
+    "height": 2
+  },
+  "mapping": [
+    {
+      "dataSetId": "aa7f6688-aa8a-40b2-be69-74a53fc49e42",
+      "alias": "growthsummary",
+      "fields": [
+        {
+          "alias": "week",
+          "columnName": "Week #"
+        },
+        {
+          "alias": "avgWeeksGrowth",
+          "columnName": "Avg weeks of growth DataSet Calculation"
+        },
+        {
+          "alias": "avgWeeksBetweenAssessmentsBOYtoMOY",
+          "columnName": "Week between assessment BOY to MOY"
+        },
+        {
+          "alias": "avgWeeksBetweenAssessmentsMOYtoEOY",
+          "columnName": "Weeks between assessment"
+        },
+        {
+          "alias": "usageCategory",
+          "columnName": "Usage BOY to EOY (3 lines)"
+        },
+        {
+          "alias": "usageCategoryDisplayName",
+          "columnName": "Category display name (BOY to EOY final) Dataset Calculation"
+        },
+        {
+          "alias": "studentCount",
+          "columnName": "# Students Dataset Calculation"
+        },
+        {
+          "alias": "isUsageCategoryVisible",
+          "columnName": "Show or No"
+        },
+        {
+          "alias": "showActualEOYGrowth",
+          "columnName": "EOY Show or No"
+        }
+      ]
+    }
+  ]
+}
