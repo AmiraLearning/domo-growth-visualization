@@ -10,7 +10,7 @@ const USAGE_CATEGORY_COLORS = {
   'Expected': '#09a6f3',
   'Actual': '#04BF8A',
   'High': '#04BF8A',
-  'Mid': '#bf212f',
+  'Mid': '#ff8a08',
   'Low': '#2176ff',
 }
 
@@ -192,6 +192,32 @@ function plotVisibleUsageCategories(growthByUsageCategoryMap) {
       },
     });
 
+    // add trace of hidden markers for student count hover
+    for(let i = 0; i < xCoordinates.length; i++) {
+      let hoverXCoordinates = [];
+      let hoverYCoordinates = [];
+      let yStart = yCoordinates[i];
+      let yEnd = yCoordinates[i + 1];
+      let xStart = xCoordinates[i];
+      let xEnd = xCoordinates[i + 1];
+      let steps = 100; // define the number of steps for interpolation
+
+      for(let x = 0; x <= steps; x++) {
+        hoverXCoordinates.push(xStart + (xEnd - xStart) * (x / steps));
+        hoverYCoordinates.push(yStart + (yEnd - yStart) * (x / steps));
+      }
+
+      plotData.push({
+        x: hoverXCoordinates,
+        y: hoverYCoordinates,
+        mode: 'markers',
+        marker: {color: 'rgba(0,0,0,0.0)'},
+        hovertemplate: `${studentCount.toLocaleString()} students <extra></extra>`,
+        hoverlabel: {bgcolor: 'deep', font: { size: 16} },
+        showlegend: false,
+      });
+    }
+
     // when actual EOY growth isn't displayed, show projected EOY growth
     let projectedXCoordinates = [50, 100];
     let projectedYCoordinates = [yCoordinates[yCoordinates.length - 1], (yCoordinates[yCoordinates.length - 1] * 2)];
@@ -248,35 +274,35 @@ function plotVisibleUsageCategories(growthByUsageCategoryMap) {
         arrowwidth: 1.5,
         arrowcolor: usageCategoryColor,
       });
+
+      // add trace of hidden markers for student count hover
+      let hoverXCoordinates = [];
+      let hoverYCoordinates = [];
+      let yStart = yCoordinates[0];
+      let yEnd = projectedYCoordinates[1];
+      let xStart = xCoordinates[0];
+      let xEnd = projectedXCoordinates[1];
+      let steps = 100; // define the number of steps for interpolation
+
+      for(let i = 0; i <= steps; i++) {
+        hoverXCoordinates.push(xStart + (xEnd - xStart) * (i / steps));
+        hoverYCoordinates.push(yStart + (yEnd - yStart) * (i / steps));
+      }
+
+      plotData.push({
+        x: hoverXCoordinates,
+        y: hoverYCoordinates,
+        mode: 'markers',
+        marker: {color: 'rgba(0,0,0,0.0)'},
+        hovertemplate: `${studentCount.toLocaleString()} students <extra></extra>`,
+        hoverlabel: {bgcolor: 'deep', font: { size: 16} },
+        showlegend: false,
+      });
     }
 
     // display average weeks between assessments on x-axis
     let { averageBOYtoMOY, averageMOYtoEOY } = getOverallAverageWeeksBetweenAssessments(growthByUsageCategoryMap);
     plotLayout.xaxis.title = `Average weeks between assessments:<br>BOY to MOY: ${averageBOYtoMOY}<br>MOY to EOY: ${averageMOYtoEOY}`;
-
-    // add trace of hidden markers for student count hover
-    let hoverXCoordinates = [];
-    let hoverYCoordinates = [];
-    let yStart = yCoordinates[0];
-    let yEnd = projectedYCoordinates[1];
-    let xStart = xCoordinates[0];
-    let xEnd = projectedXCoordinates[1];
-    let steps = 100; // define the number of steps for interpolation
-
-    for(let i = 0; i <= steps; i++) {
-      hoverXCoordinates.push(xStart + (xEnd - xStart) * (i / steps));
-      hoverYCoordinates.push(yStart + (yEnd - yStart) * (i / steps));
-    }
-
-    plotData.push({
-      x: hoverXCoordinates,
-      y: hoverYCoordinates,
-      mode: 'markers',
-      marker: {color: 'rgba(0,0,0,0.0)'},
-      hovertemplate: `${studentCount.toLocaleString()} students <extra></extra>`,
-      hoverlabel: {bgcolor: 'deep', font: { size: 16} },
-      showlegend: false,
-    });
 
     usageCategoryIndex++;
   });
