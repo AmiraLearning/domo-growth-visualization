@@ -9,7 +9,7 @@
   },
   "mapping": [
     {
-      "dataSetId": "aa7f6688-aa8a-40b2-be69-74a53fc49e42",
+      "dataSetId": "425c5c86-332f-4ee7-aa0a-fa8ec62d6c24",
       "alias": "growthsummary",
       "fields": [
         {
@@ -30,7 +30,7 @@
         },
         {
           "alias": "usageCategory",
-          "columnName": "Usage BOY to EOY (3 lines)"
+          "columnName": "Growth Type BOY to EOY (3 LINES)"
         },
         {
           "alias": "usageCategoryDisplayName",
