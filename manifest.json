@@ -39,6 +39,10 @@
         {
           "alias": "isUsageCategoryVisible",
           "columnName": "Show or No"
+        },
+        {
+          "alias": "grade",
+          "columnName": "Grade"
         }
       ]
     }
