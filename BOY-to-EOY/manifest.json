@@ -47,6 +47,10 @@
         {
           "alias": "showActualEOYGrowth",
           "columnName": "EOY Show or No"
+        },
+        {
+          "alias": "grade",
+          "columnName": "Grade"
         }
       ]
     }
